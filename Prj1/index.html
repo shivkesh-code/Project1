@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Task Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --surface2: #1c1c21;
+    --border: #2a2a32;
+    --accent: #c8ff00;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #6b6b7a;
+    --done: #3a3a45;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-image:
+      radial-gradient(ellipse at 10% 20%, rgba(200,255,0,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(255,107,53,0.04) 0%, transparent 50%);
+  }
+
+  .app {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .header {
+    margin-bottom: 32px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo span {
+    color: var(--accent);
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 100px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .task-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .task-input::placeholder { color: var(--muted); }
+  .task-input:focus { border-color: var(--accent); }
+
+  .btn-add {
+    background: var(--accent);
+    color: #0d0d0f;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 20px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+
+  .btn-add:hover { opacity: 0.88; }
+  .btn-add:active { transform: scale(0.97); }
+
+  .ai-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .btn-ai {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-ai:hover { border-color: var(--accent); background: var(--surface2); }
+  .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-ai .icon {
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .btn-ai.loading::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--accent);
+    animation: progress 1.5s ease-in-out infinite;
+  }
+
+  @keyframes progress {
+    0% { width: 0%; left: 0; }
+    50% { width: 60%; left: 20%; }
+    100% { width: 0%; left: 100%; }
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .task-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.2s ease;
+    transition: border-color 0.2s, opacity 0.2s;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .task-item:hover { border-color: #3a3a46; }
+
+  .task-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.done { background: var(--accent); border-color: var(--accent); }
+  .task-check.done::after { content: '✓'; font-size: 10px; color: #0d0d0f; font-weight: 700; }
+
+  .task-text {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.4;
+    transition: color 0.2s;
+  }
+
+  .task-text.done {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--done);
+  }
+
+  .btn-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .btn-del:hover { color: var(--accent2); }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 40px 20px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 12px 20px;
+    border-radius: 100px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 999;
+    max-width: 90vw;
+    text-align: center;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.accent { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">task<span>.</span>ai</div>
+      <div class="badge">Claude-powered</div>
+    </div>
+    <div class="subtitle">// your intelligent to-do list</div>
+  </div>
+
+  <div class="input-row">
+    <input class="task-input" id="taskInput" placeholder="what needs to get done?" />
+    <button class="btn-add" onclick="addTask()">+ Add</button>
+  </div>
+
+  <div class="ai-row">
+    <button class="btn-ai" id="btnSuggest" onclick="aiSuggest()">
+      <span class="icon">✨</span>
+      <span>Improve task</span>
+    </button>
+    <button class="btn-ai" id="btnSummarize" onclick="aiSummarize()">
+      <span class="icon">🧠</span>
+      <span>Summarize</span>
+    </button>
+    <button class="btn-ai" id="btnBreakdown" onclick="aiBreakdown()">
+      <span class="icon">🔀</span>
+      <span>Break it down</span>
+    </button>
+    <button class="btn-ai" id="btnPriority" onclick="aiPriority()">
+      <span class="icon">⚡</span>
+      <span>Prioritize list</span>
+    </button>
+  </div>
+
+  <div class="section-label">Tasks — <span id="taskCount">0</span></div>
+  <div class="task-list" id="taskList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // In-memory task store (no localStorage — not supported in this environment)
+  let tasks = [];
+
+  function renderTasks() {
+    const list = document.getElementById('taskList');
+    const count = document.getElementById('taskCount');
+    count.textContent = tasks.length;
+
+    if (tasks.length === 0) {
+      list.innerHTML = '<div class="empty">no tasks yet — add one above or let AI suggest</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    tasks.forEach((task, i) => {
+      const item = document.createElement('div');
+      item.className = 'task-item';
+
+      const check = document.createElement('div');
+      check.className = 'task-check' + (task.done ? ' done' : '');
+      check.onclick = () => toggleDone(i);
+
+      const text = document.createElement('div');
+      text.className = 'task-text' + (task.done ? ' done' : '');
+      text.textContent = task.text;
+
+      const del = document.createElement('button');
+      del.className = 'btn-del';
+      del.textContent = '×';
+      del.onclick = () => deleteTask(i);
+
+      item.appendChild(check);
+      item.appendChild(text);
+      item.appendChild(del);
+      list.appendChild(item);
+    });
+  }
+
+  function addTask(text) {
+    const input = document.getElementById('taskInput');
+    const val = (text || input.value).trim();
+    if (!val) return;
+    tasks.push({ text: val, done: false });
+    input.value = '';
+    renderTasks();
+  }
+
+  function deleteTask(i) {
+    tasks.splice(i, 1);
+    renderTasks();
+  }
+
+  function toggleDone(i) {
+    tasks[i].done = !tasks[i].done;
+    renderTasks();
+  }
+
+  function showToast(msg, accent = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (accent ? ' accent' : '') + ' show';
+    setTimeout(() => t.className = 'toast' + (accent ? ' accent' : ''), 3000);
+  }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    if (loading) {
+      btn.classList.add('loading');
+      btn.disabled = true;
+    } else {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  async function callClaude(prompt) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.content.map(b => b.text || '').join('');
+  }
+
+  async function aiSuggest() {
+    const input = document.getElementById('taskInput');
+    if (!input.value.trim()) { showToast('Enter a task first'); return; }
+    setLoading('btnSuggest', true);
+    try {
+      const result = await callClaude(
+        `Rewrite this task to be clearer, more actionable, and specific. Return ONLY the improved task text, nothing else, no explanation, no punctuation at the end.\n\nTask: ${input.value}`
+      );
+      input.value = result.trim();
+      showToast('Task improved ✨', true);
+    } catch (e) {
+      showToast('AI error — try again');
+    } finally {
+      setLoading('btnSuggest', false);
+    }
+  }
+
+  async function aiSummarize() {
+    const input = document.getElementById('taskInput');
+    if (!input.value.trim()) { showToast('Enter a task first'); return; }
+    setLoading('btnSummarize', true);
+    try {
+      const result = await callClaude(
+        `Condense this task into a short, punchy 3-7 word version. Return ONLY the shortened task, nothing else.\n\nTask: ${input.value}`
+      );
+      input.value = result.trim();
+      showToast('Task summarized 🧠', true);
+    } catch (e) {
+      showToast('AI error — try again');
+    } finally {
+      setLoading('btnSummarize', false);
+    }
+  }
+
+  async function aiBreakdown() {
+    const input = document.getElementById('taskInput');
+    if (!input.value.trim()) { showToast('Enter a task first'); return; }
+    setLoading('btnBreakdown', true);
+    try {
+      const result = await callClaude(
+        `Break this task into 3-5 concrete sub-tasks. Return ONLY the sub-tasks as a JSON array of strings. Example: ["Sub-task 1","Sub-task 2"]. No other text.\n\nTask: ${input.value}`
+      );
+      let subtasks;
+      try {
+        const clean = result.replace(/```json|```/g, '').trim();
+        subtasks = JSON.parse(clean);
+      } catch {
+        showToast('Could not parse breakdown'); return;
+      }
+      subtasks.forEach(t => tasks.push({ text: t, done: false }));
+      input.value = '';
+      renderTasks();
+      showToast(`Added ${subtasks.length} sub-tasks 🔀`, true);
+    } catch (e) {
+      showToast('AI error — try again');
+    } finally {
+      setLoading('btnBreakdown', false);
+    }
+  }
+
+  async function aiPriority() {
+    if (tasks.length < 2) { showToast('Add at least 2 tasks first'); return; }
+    setLoading('btnPriority', true);
+    try {
+      const taskList = tasks.map((t, i) => `${i}: ${t.text}`).join('\n');
+      const result = await callClaude(
+        `Reorder these tasks by priority (most important first). Return ONLY a JSON array of the task indices in new order. Example: [2,0,1]. No other text.\n\nTasks:\n${taskList}`
+      );
+      const clean = result.replace(/```json|```/g, '').trim();
+      const order = JSON.parse(clean);
+      const reordered = order.map(i => tasks[i]).filter(Boolean);
+      if (reordered.length === tasks.length) {
+        tasks = reordered;
+        renderTasks();
+        showToast('List prioritized ⚡', true);
+      }
+    } catch (e) {
+      showToast('AI error — try again');
+    } finally {
+      setLoading('btnPriority', false);
+    }
+  }
+
+  // Enter key support
+  document.getElementById('taskInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  renderTasks();
+</script>
+</body>
+</html>
